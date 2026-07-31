@@ -1,0 +1,7 @@
+*.md
+*.ps1
+*.bat
+node_modules/
+.env
+.vscode/
+*.ipynb
