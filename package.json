@@ -1,0 +1,12 @@
+{
+  "name": "cartup-tracker",
+  "version": "1.1.0",
+  "private": true,
+  "description": "CartUp price history & deals tracker — Python scraper + GitHub Pages dashboard.",
+  "scripts": {
+    "scrape": "python scraper.py --scope=featured",
+    "scrape:full": "python scraper.py --scope=full",
+    "serve": "npx --yes serve ."
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,30 @@
+name: daily-scrape
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 23 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run scraper
+        run: python scraper.py --scope=featured --quiet
+
+      - name: Commit fresh data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/products.json data/history.json data/meta.json data/daily data/state
+          git commit -m "chore: daily price snapshot $(date -u +%F)" || echo "no changes to commit"
+          git push
