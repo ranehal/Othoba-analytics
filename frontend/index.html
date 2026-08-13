@@ -1,18 +1,20 @@
-<!-- GroceryGOD Frontend - Market Sensors View -->
-<!-- Dev note: UI ta mobile e ektu chap hoye jay, but sidebar toggle diye solve korlam. -->
+<!-- GroceryGOD Frontend - Market Sensors & Price Analytics View -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GroceryGOD // Price Comparison Engine</title>
+    <title>Othoba // SteamDB-Style Price Analytics & Monitor</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-    <link rel="stylesheet" href="style.css?v=20260619">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20260814">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="pitch-black">
-    <script>window.GOD_ASSET_VERSION = '20260619';</script>
+    <script>window.GOD_ASSET_VERSION = '20260814';</script>
     <div id="loading-spinner" class="spinner-container">
         <div class="spinner"></div>
         <span style="color:var(--accent-color); font-weight:800;">Loading: <span id="loading-percent">0</span>%</span>
@@ -23,12 +25,12 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-controls">
-                <button id="select-all-cat" class="btn-icon" title="Toggle All"><i class="fas fa-check-double"></i></button>
-                <button id="bookmark-cat-btn" class="btn-icon" title="Show Favorites Only"><i class="fas fa-star"></i></button>
+                <button id="select-all-cat" class="btn-icon" title="Toggle All Categories"><i class="fas fa-check-double"></i> All</button>
+                <button id="bookmark-cat-btn" class="btn-icon" title="Show Favorites Only"><i class="fas fa-star"></i> Starred</button>
             </div>
 
             <div class="category-search-container">
-                <input type="text" id="category-filter" placeholder="Filter categories/stores...">
+                <input type="text" id="category-filter" placeholder="Filter categories...">
             </div>
 
             <ul id="category-list" class="category-list">
@@ -36,7 +38,7 @@
             </ul>
             
             <div class="store-legend" id="store-stats-sidebar">
-                <!-- Last update dates for each store -->
+                <!-- Data metrics sidebar -->
             </div>
         </aside>
 
@@ -45,9 +47,12 @@
             <header class="dashboard-header">
                 <div class="header-left">
                     <button id="sidebar-toggle" class="sidebar-toggle-btn"><i class="fas fa-bars"></i></button>
-                    <h2 id="current-view-title" style="margin:0; font-size:1.2rem; color:var(--text-primary);">Othoba Price Monitor</h2>
+                    <div class="brand-title-group">
+                        <h2 id="current-view-title" class="brand-title"><i class="fas fa-chart-line" style="color:var(--steam-blue)"></i> Othoba Analytics</h2>
+                        <span class="brand-subbadge"><i class="fas fa-bolt"></i> STEAMDB ENGINE</span>
+                    </div>
                     <div class="search-wrapper">
-                        <input type="text" id="product-search" class="search-input" placeholder="Search Othoba products (Esc to close)...">
+                        <input type="text" id="product-search" class="search-input" placeholder="Search Othoba catalog (Esc to clear)...">
                         <i id="clear-search" class="fas fa-times-circle clear-search"></i>
                         <div id="search-suggestions" class="suggestions-box"></div>
                     </div>
@@ -59,65 +64,56 @@
                         <label class="check-pill"><input type="checkbox" value="kg" checked> KG</label>
                         <label class="check-pill"><input type="checkbox" value="liter" checked> LTR</label>
                         <label class="check-pill"><input type="checkbox" value="piece" checked> PCS</label>
-                        <label class="check-pill" style="margin-left:10px; border-left:1px solid #333; padding-left:10px;"><input type="checkbox" id="new-only-checkbox"> New Only</label>
+                        <label class="check-pill" style="margin-left:8px; border-left:1px solid #333; padding-left:8px;"><input type="checkbox" id="new-only-checkbox"> New</label>
                     </div>
 
                     <select id="sort-options" class="search-input">
-                        <option value="name_asc">Name A-Z</option>
-                        <option value="unit_price_asc">Unit Price Low-High</option>
-                        <option value="unit_price_desc">Unit Price High-Low</option>
-                        <option value="actual_price_asc">Actual Price Low-High</option>
-                        <option value="drop_desc">Biggest Drop</option>
-                        <option value="rise_desc">Biggest Rise</option>
-                        <option value="savings_desc">Best Saving</option>
+                        <option value="unit_price_asc">Price: Low to High</option>
+                        <option value="unit_price_desc">Price: High to Low</option>
+                        <option value="discount_desc">Best Discount %</option>
+                        <option value="drop_desc">Biggest Price Drop</option>
+                        <option value="sold_desc">Most Sold</option>
+                        <option value="name_asc">Name: A-Z</option>
                     </select>
 
+                    <button id="alerts-btn" class="btn-icon alert-tool-btn" title="Target Price Alerts"><i class="fas fa-bell"></i> Alerts <span id="alerts-badge-count" class="badge-mini">0</span></button>
+                    <button id="analytics-btn" class="btn-icon stats-tool-btn" title="Catalog Analytics Summary"><i class="fas fa-chart-pie"></i> Intel</button>
+                    <button id="export-csv-btn" class="btn-icon" title="Export Current View as CSV"><i class="fas fa-file-csv"></i> Export</button>
                     <button id="compare-btn" class="btn-icon" title="Compare Selected Matrix"><i class="fas fa-balance-scale"></i> Compare</button>
                     <button id="cart-comp-btn" class="btn-icon" title="Cart Analysis"><i class="fas fa-shopping-cart"></i> Cart</button>
                 </div>
             </header>
 
-            <!-- Intelligence Bar -->
+            <!-- SteamDB Radar & Intelligence Bar -->
             <div class="intelligence-bar">
-                <button class="intel-btn" data-filter="all" style="color:var(--gold)">All</button>
-                <button class="intel-btn" data-filter="great" title="Price dropped > 15% from avg">Great Deal</button>
+                <span class="radar-label"><i class="fas fa-satellite-dish"></i> DEALS RADAR:</span>
+                <button class="intel-btn active" data-filter="all">All Items</button>
+                <button class="intel-btn" data-filter="low" title="Current price is the lowest recorded history"><i class="fas fa-fire"></i> All-Time Low</button>
+                <button class="intel-btn" data-filter="great" title="Price dropped > 20% from avg"><i class="fas fa-tags"></i> Big Discounts (>20%)</button>
                 <button class="intel-btn" data-filter="good" title="Price dropped > 5% from avg">Good Buy</button>
-                <button class="intel-btn" data-filter="wait" title="Price is above average">Wait</button>
-                <button class="intel-btn" data-filter="low" title="Current price is the lowest recorded">All Time Low</button>
-                <button class="intel-btn" data-filter="new" title="Items first seen recently">New Items</button>
-                <button class="intel-btn" data-filter="pricechange" title="Show price change from custom days ago">Price Change</button>
-                
-                <div class="date-range-intel" id="price-change-controls" style="display:none;">
-                    <span>From:</span>
-                    <input type="number" id="pc-days-input" value="7" min="1" max="365" style="width:45px; background:var(--bg-card); color:white; border:1px solid #444; border-radius:4px; padding:2px 5px;">
-                    <span>days ago</span>
-                    <button id="pc-mode-toggle" class="intel-btn" style="padding:2px 8px; font-size:0.6rem; margin-left:4px;">%</button>
-                </div>
+                <button class="intel-btn" data-filter="wait" title="Price is above average">Price Risen</button>
+                <button class="intel-btn" data-filter="new" title="Items first seen recently">New Arrivals</button>
+                <button class="intel-btn" data-filter="pricechange" title="Show price change from custom days ago">Price Delta</button>
 
-                <div class="date-range-intel">
-                    <span>New in:</span>
-                    <input type="number" id="new-days-input" value="7" min="1" max="90" style="width:45px; background:var(--bg-card); color:white; border:1px solid #444; border-radius:4px; padding:2px 5px;">
-                    <span>days</span>
-                </div>
-
-                <div class="date-range-intel">
-                    <span>Mean Analysis:</span>
-                    <input type="date" id="intel-date-start"> to <input type="date" id="intel-date-end">
+                <div class="price-range-container" style="display:flex; align-items:center; gap:8px; margin-left:auto; background:#111822; padding:4px 12px; border-radius:20px; border:1px solid #233348;">
+                    <span style="font-size:0.68rem; color:#8ba2b9; font-weight:700;">PRICE MAX:</span>
+                    <input type="range" id="price-range-slider" min="50" max="10000" step="50" value="10000" style="width:90px; accent-color:var(--steam-blue);">
+                    <span id="price-range-val" style="font-size:0.7rem; font-weight:900; color:var(--steam-blue); font-family:'JetBrains Mono', monospace;">10000 Tk</span>
                 </div>
             </div>
 
-            <!-- Stats Bar -->
+            <!-- Dashboard Telemetry Bar -->
             <div class="stats-bar">
                 <div class="stat-item clickable" id="stat-total-btn">
-                    <span class="stat-label">Total Units</span>
+                    <span class="stat-label">Total Catalog Items</span>
                     <span class="stat-value" id="total-items">0</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-label">Market Status</span>
-                    <span class="stat-value" style="color:var(--accent-secondary)">STABLE</span>
+                    <span class="stat-label">SteamDB Price Index</span>
+                    <span class="stat-value" style="color:var(--steam-green)"><i class="fas fa-check-circle"></i> ACTIVE</span>
                 </div>
                 <div class="stat-item clickable" id="stat-good-buys-btn">
-                    <span class="stat-label">Best Values</span>
+                    <span class="stat-label">All-Time Lows & Best Values</span>
                     <span class="stat-value highlight" id="good-buys-count">0</span>
                 </div>
             </div>
@@ -133,6 +129,130 @@
     <div class="scroll-nav">
         <button id="scroll-top" class="scroll-btn" title="Scroll to Top"><i class="fas fa-arrow-up"></i></button>
         <button id="scroll-bottom" class="scroll-btn" title="Scroll to Bottom"><i class="fas fa-arrow-down"></i></button>
+    </div>
+
+    <!-- SteamDB Style Detailed Price History Modal -->
+    <div id="chart-modal" class="modal">
+        <div class="modal-content full-screen-modal steamdb-modal-content" style="max-height: 96vh; max-width: 1100px; width: 95vw; background: #0e141b; border: 1px solid #2a475e; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); overflow:hidden;">
+            <div class="modal-header steamdb-modal-header" style="background: linear-gradient(135deg, #1b2838 0%, #101822 100%); padding: 18px 24px; border-bottom: 1px solid #2a475e; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display:flex; flex-direction:column; gap:4px; max-width: 70%;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span id="chart-store-tag" class="steam-store-tag">OTHOBABAZAR</span>
+                        <span id="chart-cat-path" class="steam-cat-path">Catalog > Category</span>
+                        <span id="steam-low-badge" class="steam-low-badge" style="display:none;"><i class="fas fa-fire"></i> ALL-TIME LOW</span>
+                    </div>
+                    <h2 id="chart-product-name" style="font-size: 1.35rem; color: #ffffff; margin: 4px 0 0 0; font-family: 'Outfit', sans-serif; font-weight: 800; line-height: 1.2;"></h2>
+                </div>
+                <div style="display:flex; gap:12px; align-items:center;">
+                    <button id="modal-alert-btn" class="steam-btn-action" title="Set Price Alert"><i class="fas fa-bell"></i> Set Target Alert</button>
+                    <button id="modal-fav-btn" class="steam-btn-action" title="Toggle Favorite"><i class="fas fa-star"></i> Star</button>
+                    <button onclick="closeModal()" style="background: #2a3f5a; color: #fff; border: none; border-radius: 6px; width: 36px; height: 36px; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition:0.2s;"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+
+            <!-- Telemetry Stats Cards Grid -->
+            <div class="steam-telemetry-bar">
+                <div class="steam-stat-card">
+                    <div class="steam-stat-label">Current Price</div>
+                    <div class="steam-stat-val price-curr" id="chart-actual">--</div>
+                    <div class="steam-stat-sub" id="chart-unit">--</div>
+                </div>
+                <div class="steam-stat-card">
+                    <div class="steam-stat-label">Original / List Price</div>
+                    <div class="steam-stat-val price-orig" id="chart-orig">--</div>
+                    <div class="steam-stat-sub" id="chart-discount-pct">--</div>
+                </div>
+                <div class="steam-stat-card">
+                    <div class="steam-stat-label">Lowest Price Recorded</div>
+                    <div class="steam-stat-val price-min" id="chart-min">--</div>
+                    <div class="steam-stat-sub" id="chart-min-date">Historical Low</div>
+                </div>
+                <div class="steam-stat-card">
+                    <div class="steam-stat-label">Highest Price Recorded</div>
+                    <div class="steam-stat-val price-max" id="chart-max">--</div>
+                    <div class="steam-stat-sub" id="chart-max-date">Historical High</div>
+                </div>
+                <div class="steam-stat-card">
+                    <div class="steam-stat-label">Historical Average</div>
+                    <div class="steam-stat-val price-avg" id="chart-avg">--</div>
+                    <div class="steam-stat-sub">Overall Mean</div>
+                </div>
+            </div>
+
+            <!-- Price Spectrum Progress Bar -->
+            <div class="steam-spectrum-container" style="padding: 10px 24px; background: #121c27; border-bottom: 1px solid #1f2f42;">
+                <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:#8ba2b9; font-weight:700; margin-bottom:4px;">
+                    <span>Price Spectrum: Min <strong id="spectrum-min-txt">0</strong> Tk</span>
+                    <span id="spectrum-status-txt" style="color:var(--steam-green);">Current price is near historical low</span>
+                    <span>Max <strong id="spectrum-max-txt">0</strong> Tk</span>
+                </div>
+                <div class="steam-spectrum-bar">
+                    <div id="spectrum-fill" class="steam-spectrum-fill" style="width: 0%;"></div>
+                    <div id="spectrum-marker" class="steam-spectrum-marker" style="left: 0%;" title="Current Price Position"></div>
+                </div>
+            </div>
+
+            <!-- Chart Toolbar & Range Selector -->
+            <div class="steam-chart-toolbar">
+                <div class="steam-range-pickers">
+                    <span class="range-label">TIMELINE:</span>
+                    <button class="steam-range-btn" data-range="30">1M</button>
+                    <button class="steam-range-btn" data-range="90">3M</button>
+                    <button class="steam-range-btn" data-range="180">6M</button>
+                    <button class="steam-range-btn" data-range="365">1Y</button>
+                    <button class="steam-range-btn active" data-range="all">ALL</button>
+                </div>
+                <div class="steam-mode-pickers">
+                    <button id="chart-mode-norm" class="steam-range-btn active">Unit Price</button>
+                    <button id="chart-mode-actual" class="steam-range-btn">Actual Price</button>
+                </div>
+            </div>
+
+            <!-- Main Chart Container -->
+            <div class="chart-container full-height-container" style="position:relative; height: 320px; padding: 10px 24px; background:#0b1016;">
+                <canvas id="price-history-chart"></canvas>
+            </div>
+
+            <!-- Modal Footer Actions -->
+            <div class="modal-footer-custom steamdb-footer" style="padding: 14px 24px; background: #172330; border-top: 1px solid #2a475e; display: flex; justify-content: space-between; align-items: center;">
+                <button class="btn-icon" onclick="closeModal()"><i class="fas fa-arrow-left"></i> Back to Catalog</button>
+                <div style="display:flex; gap:10px;">
+                    <button id="copy-json-btn" class="btn-icon" style="background:#1b2838;"><i class="fas fa-code"></i> Copy JSON</button>
+                    <button id="external-othoba-btn" class="btn-icon" style="background:#007aff; color:#fff;" onclick="window.open('https://www.othoba.com', '_blank')"><i class="fas fa-external-link-alt"></i> Open Othoba</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Target Price Alerts Manager Modal -->
+    <div id="alerts-modal" class="modal">
+        <div class="modal-content" style="max-width: 650px; width: 90vw; background: #0e141b; border: 1px solid #2a475e; border-radius: 12px;">
+            <div class="modal-header" style="background: #1b2838; padding: 15px 20px; border-bottom: 1px solid #2a475e;">
+                <h2 style="font-size: 1.3rem; color: #66c0f4; margin: 0;"><i class="fas fa-bell"></i> Target Price Alerts</h2>
+                <span class="close-modal" data-modal="alerts-modal">&times;</span>
+            </div>
+            <div class="modal-body-content" style="padding: 20px;">
+                <p style="font-size: 0.8rem; color: #8ba2b9; margin-top: 0;">Set target price alerts on products. When product price drops at or below your target, alert badges will light up!</p>
+                <div id="alerts-list-container" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Alerts populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Catalog Analytics Modal -->
+    <div id="analytics-modal" class="modal">
+        <div class="modal-content" style="max-width: 800px; width: 90vw; background: #0e141b; border: 1px solid #2a475e; border-radius: 12px;">
+            <div class="modal-header" style="background: #1b2838; padding: 15px 20px; border-bottom: 1px solid #2a475e;">
+                <h2 style="font-size: 1.3rem; color: var(--gold); margin: 0;"><i class="fas fa-chart-pie"></i> Othoba Catalog Telemetry & Savings Summary</h2>
+                <span class="close-modal" data-modal="analytics-modal">&times;</span>
+            </div>
+            <div class="modal-body-content" style="padding: 20px;">
+                <div id="analytics-content-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
+                    <!-- Analytics data populated by JS -->
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Comparison Matrix Modal -->
@@ -179,43 +299,8 @@
         </div>
     </div>
 
-    <!-- Detailed Chart Modal -->
-    <div id="chart-modal" class="modal">
-        <div class="modal-content full-screen-modal sci-fi-modal" style="max-height: 95vh; max-width: 95vw;">
-            <div class="modal-header" style="background: linear-gradient(135deg, var(--bg-dark), #2a2a3a); padding: 20px;">
-                <h2 id="chart-product-name" style="font-size: 1.8rem; color: var(--gold);"></h2>
-                <div style="display:flex; gap:15px; align-items:center;">
-                    <span id="chart-store-tag" class="store-tag" style="font-size: 1rem; padding: 8px 15px;"></span>
-                    <span id="chart-product-unit" style="color:#888; font-size:1.1rem;"></span>
-                    <button onclick="closeModal()" style="background: var(--danger); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 1.5rem; cursor: pointer; display: flex; align-items: center; justify-content: center;"><i class="fas fa-times"></i></button>
-                </div>
-            </div>
-            <div class="chart-analytics full-width-analytics">
-                <div class="stat-card">
-                    <div class="stat-label">Actual Price</div>
-                    <div class="stat-value" id="chart-actual"></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Unit Price</div>
-                    <div class="stat-value" id="chart-unit"></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Historical Average</div>
-                    <div class="stat-value" id="chart-avg"></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Market Range</div>
-                    <div class="stat-value" id="chart-min-max"></div>
-                </div>
-            </div>
-            <div class="chart-container full-height-container">
-                <canvas id="price-history-chart"></canvas>
-            </div>
-            <button id="mobile-close-chart" class="mobile-close-btn" onclick="closeModal()"><i class="fas fa-times"></i></button>
-        </div>
-    </div>
-
-    <script src="othoba_manifest.js?v=20260619"></script>
-    <script src="script.js?v=20260723"></script>
+    <script src="othoba_manifest.js?v=20260814"></script>
+    <script src="script.js?v=20260814"></script>
 </body>
 </html>
+
