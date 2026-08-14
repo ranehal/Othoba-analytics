@@ -297,6 +297,15 @@ function renderSidebar() {
             });
             shopCb.checked = checked;
             shopCb.indeterminate = false;
+            catList.querySelectorAll('.shop-parent-item').forEach(pg => {
+                const pCb = pg.querySelector('.parent-checkbox');
+                pCb.checked = checked;
+                pCb.indeterminate = false;
+                pg.querySelectorAll('.shop-cat-item').forEach(li => {
+                    li.querySelector('.cat-checkbox').checked = checked;
+                    li.classList.toggle('active', checked);
+                });
+            });
             renderProducts();
         };
 
@@ -346,6 +355,10 @@ function renderSidebar() {
                     });
                     parentCb.checked = checked;
                     parentCb.indeterminate = false;
+                    parentGroup.querySelectorAll('.shop-cat-item').forEach(li => {
+                        li.querySelector('.cat-checkbox').checked = checked;
+                        li.classList.toggle('active', checked);
+                    });
                     shopCb.checked = allCatIds.every(id => activeCategories.has(id));
                     shopCb.indeterminate = !shopCb.checked && allCatIds.some(id => activeCategories.has(id));
                     renderProducts();
