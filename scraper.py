@@ -131,20 +131,83 @@ def main():
 
     print(f'\n       Total unique: {len(all_products)} products\n')
 
-    print('[3/3] Saving...')
-    fpath = os.path.join(OUT_DIR, 'othoba_products.json')
-    with open(fpath, 'w', encoding='utf-8') as f:
+    print('[3/3] Merging price history and saving...')
+    if not all_products:
+        print('[WARN] No products scraped. Preserving existing datasets to avoid data loss.')
+        return
+
+    today = datetime.now().strftime('%Y-%m-%d')
+    hist_dir = os.path.join(OUT_DIR, 'history')
+    os.makedirs(hist_dir, exist_ok=True)
+    
+    # Save daily snapshot
+    snapshot_path = os.path.join(hist_dir, f'othoba_products_{today}.json')
+    with open(snapshot_path, 'w', encoding='utf-8') as f:
         json.dump(all_products, f, indent=2, ensure_ascii=False)
-    print(f'       -> {fpath} ({len(all_products)} products)')
+    print(f'       -> Snapshot: {snapshot_path} ({len(all_products)} products)')
+
+    # Load existing master products to accumulate history
+    fpath = os.path.join(OUT_DIR, 'othoba_products.json')
+    existing_map = {}
+    if os.path.exists(fpath):
+        try:
+            with open(fpath, 'r', encoding='utf-8') as f:
+                old_list = json.load(f)
+                for item in old_list:
+                    if isinstance(item, dict) and 'id' in item:
+                        existing_map[item['id']] = item
+        except Exception as e:
+            print(f'       [WARN] Could not parse existing master: {e}')
+
+    merged_products = []
+    scraped_ids = set()
+
+    for p in all_products:
+        pid = p['id']
+        scraped_ids.add(pid)
+        curr_price = p['current_price']
+        norm_price = p['normalized_price']
+        
+        old_item = existing_map.get(pid)
+        hist = []
+        if old_item and isinstance(old_item.get('history'), list):
+            hist = [h for h in old_item['history'] if isinstance(h, dict) and h.get('date') != today]
+        
+        hist.append({
+            'date': today,
+            'price': curr_price,
+            'normalized_price': norm_price
+        })
+        
+        prices = [h['price'] for h in hist if h.get('price')]
+        norm_prices = [h['normalized_price'] for h in hist if h.get('normalized_price')]
+        
+        p['first_seen'] = old_item.get('first_seen', today) if old_item else today
+        p['last_seen'] = today
+        p['history'] = hist
+        p['hist_count'] = len(hist)
+        p['min_price'] = min(prices) if prices else curr_price
+        p['max_price'] = max(prices) if prices else curr_price
+        p['avg_price'] = round(sum(prices) / len(prices), 2) if prices else curr_price
+        merged_products.append(p)
+
+    # Retain products seen in earlier scrapes but missed today
+    for pid, old_item in existing_map.items():
+        if pid not in scraped_ids:
+            merged_products.append(old_item)
+
+    with open(fpath, 'w', encoding='utf-8') as f:
+        json.dump(merged_products, f, indent=2, ensure_ascii=False)
+    print(f'       -> {fpath} ({len(merged_products)} products)')
 
     dpath = os.path.join(OUT_DIR, 'othoba_data.js')
     with open(dpath, 'w', encoding='utf-8') as f:
-        f.write(f'window.othoba_data = {json.dumps(all_products, ensure_ascii=False)};')
+        f.write(f'window.othoba_data = {json.dumps(merged_products, ensure_ascii=False)};')
     print(f'       -> {dpath}')
 
-    prices = [p['current_price'] for p in all_products if p['current_price']]
-    discs = sum(1 for p in all_products if p.get('old_price'))
-    print(f'\n       Products: {len(all_products)}  |  Discounts: {discs}')
+    prices = [p['current_price'] for p in merged_products if p.get('current_price')]
+    discs = sum(1 for p in merged_products if p.get('old_price'))
+    print(f'\n       Products: {len(merged_products)}  |  Discounts: {discs}')
     if prices: print(f'       Price: {min(prices):.0f} - {max(prices):.0f} Tk')
 
 if __name__ == '__main__':
