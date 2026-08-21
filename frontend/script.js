@@ -151,33 +151,73 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadAllFromJson() {
     try {
-        const r = await fetch('othoba_products.json');
-        if (!r.ok) return false;
-        const data = await r.json();
-        allProducts = data.map(p => {
+        let rawItems = [];
+        // 1. Try loading manifest for chunked datasets
+        const mResp = await fetch('othoba_manifest.json').catch(() => null);
+        if (mResp && mResp.ok) {
+            const manifest = await mResp.json();
+            const partPromises = manifest.parts.map(p =>
+                fetch(p).then(r => r.ok ? r.json() : []).catch(() => [])
+            );
+            const loadedParts = await Promise.all(partPromises);
+            rawItems = loadedParts.flat();
+        } else {
+            // 2. Fallback to single file or known chunk files
+            const singleResp = await fetch('othoba_products.json').catch(() => null);
+            if (singleResp && singleResp.ok) {
+                rawItems = await singleResp.json();
+            } else {
+                const partPromises = [1, 2, 3, 4].map(idx =>
+                    fetch(`othoba_products_part${idx}.json`).then(r => r.ok ? r.json() : []).catch(() => [])
+                );
+                const loadedParts = await Promise.all(partPromises);
+                rawItems = loadedParts.flat();
+            }
+        }
+
+        if (!rawItems.length && window.othoba_data) {
+            rawItems = window.othoba_data;
+        }
+
+        if (!rawItems.length) return false;
+
+        allProducts = rawItems.map(p => {
             const price = p.current_price || p.price || 0;
             const old = p.old_price || p.old_price_value || 0;
-            const catPath = p.category_path || '';
+            const catPath = p.category_path || p.category || '';
             const parts = catPath.split(' > ');
+            const hist = Array.isArray(p.history) ? p.history : [];
+            const validPrices = hist.filter(h => h && h.price > 0).map(h => h.price);
+
             return {
                 id: String(p.id), name: p.name, store: p.store || 'othoba',
                 category: p.category || 'Uncategorized',
                 category_parent: parts.length > 1 ? parts[0] : '',
                 category_path: catPath,
-                unit: p.sku || p.unit || '', unit_type: p.unit_type || 'piece',
+                unit: p.unit || p.sku || '', unit_type: p.unit_type || 'piece',
                 current_price: price, normalized_price: p.normalized_price || price,
                 old_price: old, discount_text: p.discount_text || '',
                 rating: p.rating || null, sold: p.sold || 0,
                 image: p.image || '', url: p.url || '',
-                first_seen: p.first_seen || '2026-07-30',
-                history: p.history || [], hist_count: 0,
-                minPrice: (old && old < price) ? old : price, maxPrice: old || price,
-                avgPrice: old ? (old + price) / 2 : price,
-                oldest_date: null, newest_date: null, _historyLoaded: false
+                first_seen: p.first_seen || (hist.length ? hist[0].date : '2026-04-17'),
+                last_seen: p.last_seen || (hist.length ? hist[hist.length - 1].date : '2026-08-22'),
+                in_stock: p.in_stock !== undefined ? p.in_stock : price > 0,
+                is_out_of_stock: p.is_out_of_stock !== undefined ? p.is_out_of_stock : price <= 0,
+                history: hist,
+                hist_count: hist.length,
+                minPrice: p.min_price != null ? p.min_price : (validPrices.length ? Math.min(...validPrices) : price),
+                maxPrice: p.max_price != null ? p.max_price : (validPrices.length ? Math.max(...validPrices) : price),
+                avgPrice: p.avg_price != null ? p.avg_price : (validPrices.length ? Math.round(validPrices.reduce((a,b)=>a+b,0)/validPrices.length) : price),
+                oldest_date: hist.length ? hist[0].date : null,
+                newest_date: hist.length ? hist[hist.length - 1].date : null,
+                _historyLoaded: true
             };
         });
         return true;
-    } catch { return false; }
+    } catch (e) {
+        console.error('loadAllFromJson failed:', e);
+        return false;
+    }
 }
 
 function showLoading(show, message = 'Loading...', percent = 0) {
